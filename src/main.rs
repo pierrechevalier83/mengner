@@ -14,6 +14,7 @@ impl Palette {
     }
 }
 
+#[derive(Debug)]
 struct Square {
     dimensions: (u32, u32),
     position: (u32, u32),
@@ -22,7 +23,7 @@ struct Square {
 impl Square {
     fn new() -> Square {
         Square {
-            dimensions: (800, 600),
+            dimensions: (1200, 800),
             position: (0, 0),
         }
     }
@@ -38,7 +39,8 @@ fn main() {
         window.draw_2d(&e, |mut c, mut g| {
             let mut m = Mengner::new();
             let s = Square::new();
-            m.process_layers(4, s, &mut c, &mut g);
+            let order = 5;
+            m.process_layers(order, s, &mut c, &mut g);
         });
     }
 }
@@ -70,14 +72,13 @@ impl Mengner {
         next_layer
     }
 
-    fn split_and_punch(&mut self, s: &Square, c: &mut Context, g: &mut G2d) -> Vec<Square> {
+    fn split_and_punch(&mut self, s: &Square, c: & Context, g: &mut G2d) -> Vec<Square> {
         let mut unprocessed = Vec::new();
         let size = self.n;
         for col in 0..size {
             for row in 0..size {
                 if self.is_middle(row, col) {
-                    let s = self.make_subsquare(s, row, col);
-                    self.punch(&s, c, g);
+                    Mengner::punch(self.make_subsquare(s, row, col), c, g);
                 } else {
                     unprocessed.push(self.make_subsquare(s, row, col));
                 }
@@ -90,7 +91,7 @@ impl Mengner {
         (col == row) && (col == self.n / 2)
     }
 
-    fn punch(&mut self, s: &Square, c: &Context, g: &mut G2d) {
+    fn punch(s: Square, c: &Context, g: &mut G2d) {
         let (x, y) = s.position;
         let (w, h) = s.dimensions;
         rectangle(Palette::red(), [x as f64, y as f64, w as f64, h as f64], c.transform, g);
@@ -99,8 +100,8 @@ impl Mengner {
     fn make_subsquare(&self, s: &Square, row: u32, col: u32) -> Square {
         Square {
             dimensions: (s.dimensions.0 / self.n, s.dimensions.1 / self.n),
-            position: (row * (s.dimensions.0 / self.n),
-                       col * (s.dimensions.1 / self.n)),
+            position: (s.position.0 + row * (s.dimensions.0 / self.n),
+                       s.position.1 + col * (s.dimensions.1 / self.n)),
         }
     }
 }
