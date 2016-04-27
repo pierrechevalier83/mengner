@@ -1,6 +1,6 @@
 extern crate piston_window;
 
-use piston_window::{clear, G2d, PistonWindow, WindowSettings};
+use piston_window::{clear, G2d, Context, PistonWindow, rectangle, WindowSettings};
 
 struct Palette {
 }
@@ -8,6 +8,9 @@ struct Palette {
 impl Palette {
     fn green() -> [f32; 4] {
         [0.5, 1.0, 0.5, 1.0]
+    }
+    fn red() -> [f32; 4] {
+        [1.0, 0.5, 0.5, 1.0]
     }
 }
 
@@ -20,7 +23,7 @@ impl Square {
     fn new() -> Square {
         Square {
             dimensions: (800, 600),
-            position:(0, 0),
+            position: (0, 0),
         }
     }
 }
@@ -32,39 +35,49 @@ fn main() {
                                        .build()
                                        .unwrap();
     while let Some(e) = window.next() {
-        window.draw_2d(&e, |_c, g| {
-            clear(Palette::green(), g);
+        window.draw_2d(&e, |mut c, mut g| {
+            let mut m = Mengner::new();
+            let s = Square::new();
+            m.process_layers(4, s, &mut c, &mut g);
         });
     }
 }
 
 struct Mengner {
-    n : u32
+    n: u32,
 }
 
 impl Mengner {
     fn new() -> Mengner {
-        Mengner {
-            n: 3,
+        Mengner { n: 3 }
+    }
+
+    fn process_layers(&mut self, n_layers: u32, s: Square, c: &mut Context, g: &mut G2d) {
+        clear(Palette::green(), g);
+        let mut previous = Vec::new();
+        previous.push(s);
+        for _ in 0..n_layers {
+            let next = self.process_layer(&previous, c, g);
+            previous = next;
         }
     }
 
-    fn process_layer(&mut self, layer: &Vec<Square>) -> Vec<Square> {
+    fn process_layer(&mut self, layer: &Vec<Square>, c: &mut Context, g: &mut G2d) -> Vec<Square> {
         let mut next_layer = Vec::new();
         for s in layer {
-            next_layer.extend(self.split_and_punch(s));
+            next_layer.extend(self.split_and_punch(s, c, g));
         }
         next_layer
     }
 
-    fn split_and_punch(&mut self, s :&Square) -> Vec<Square> {
+    fn split_and_punch(&mut self, s: &Square, c: &mut Context, g: &mut G2d) -> Vec<Square> {
         let mut unprocessed = Vec::new();
         let size = self.n;
         for col in 0..size {
             for row in 0..size {
                 if self.is_middle(row, col) {
                     let s = self.make_subsquare(s, row, col);
-                    self.punch(&s);
+                    self.punch(&s, c, g);
                 } else {
                     unprocessed.push(self.make_subsquare(s, row, col));
                 }
@@ -77,14 +90,17 @@ impl Mengner {
         (col == row) && (col == self.n / 2)
     }
 
-    fn punch(&mut self, s: &Square) {
-        // TODO: clear that square
+    fn punch(&mut self, s: &Square, c: &Context, g: &mut G2d) {
+        let (x, y) = s.position;
+        let (w, h) = s.dimensions;
+        rectangle(Palette::red(), [x as f64, y as f64, w as f64, h as f64], c.transform, g);
     }
 
     fn make_subsquare(&self, s: &Square, row: u32, col: u32) -> Square {
         Square {
             dimensions: (s.dimensions.0 / self.n, s.dimensions.1 / self.n),
-            position: (col * (s.dimensions.0 / self.n), row * (s.dimensions.1 / self.n))
+            position: (row * (s.dimensions.0 / self.n),
+                       col * (s.dimensions.1 / self.n)),
         }
     }
 }
